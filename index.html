@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>मेरी डायरी</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#AE3B34" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="मेरी डायरी" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="icon" href="icon-192.png" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+<style>
+  :root{
+    --paper:#EDE6D6; --card:#F7F3E8; --ink:#242B3D; --inksoft:#69708A;
+    --red:#AE3B34; --gold:#9C7A2E; --green:#3E7C52; --border:#D6CAAB;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Noto Sans Devanagari', system-ui, sans-serif;}
+  #shell{max-width:480px;margin:0 auto;min-height:100vh;background:var(--paper);border-left:4px solid var(--red);position:relative;padding-bottom:90px;}
+  header{position:sticky;top:0;z-index:20;background:var(--paper);border-bottom:1px solid var(--border);padding:18px 18px 10px;}
+  .h-title{display:flex;align-items:center;gap:8px;font-size:20px;font-weight:700;font-family:'Noto Serif Devanagari',Georgia,serif;}
+  .h-date{font-size:12px;color:var(--inksoft);margin:2px 0 0;}
+  .tabs{display:flex;gap:4px;margin-top:12px;}
+  .tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 4px;font-size:14px;font-weight:600;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--inksoft);cursor:pointer;border-radius:6px 6px 0 0;}
+  .tab.active{color:var(--red);border-bottom:2px solid var(--red);background:var(--card);}
+  main{padding:16px 18px 0;}
+  input,textarea{font-family:inherit;font-size:14px;width:100%;padding:9px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--ink);outline:none;}
+  textarea{resize:none;line-height:27px;background-image:repeating-linear-gradient(var(--card),var(--card) 26px,var(--border) 27px);}
+  textarea::placeholder,input::placeholder{color:var(--inksoft);}
+  .title-input{font-weight:600;font-size:16px;font-family:'Noto Serif Devanagari',Georgia,serif;margin-top:8px;}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;padding:9px 14px;border-radius:6px;border:none;cursor:pointer;}
+  .btn-primary{background:var(--red);color:var(--paper);width:100%;justify-content:center;padding:11px;margin-top:14px;}
+  .btn-ghost{background:var(--card);border:1px dashed var(--border);color:var(--red);}
+  .btn-green{background:var(--green);color:var(--paper);}
+  .btn-outline{background:var(--card);border:1px solid var(--border);color:var(--ink);}
+  .row{display:flex;align-items:center;gap:8px;}
+  .attach-btn{margin-top:12px;}
+  .file-chip{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;background:var(--card);border:1px solid var(--border);font-size:13px;margin-top:6px;}
+  .file-chip .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .file-chip .size{color:var(--inksoft);font-size:12px;}
+  .chip-x{background:none;border:none;cursor:pointer;color:var(--inksoft);font-size:15px;line-height:1;}
+  .warn{color:var(--gold);}
+  .banner{margin-top:10px;padding:8px 12px;border-radius:6px;font-size:13px;display:flex;gap:8px;align-items:flex-start;}
+  .banner-err{background:#F6E4E1;color:var(--red);}
+  .banner-info{background:#EFE6D2;color:var(--gold);}
+  .empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:60px 10px;text-align:center;color:var(--inksoft);font-size:14px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:10px;overflow:hidden;}
+  .card-head{padding:12px 14px;cursor:pointer;}
+  .card-date{color:var(--red);font-weight:700;font-size:13px;}
+  .card-attn{color:var(--inksoft);font-size:12px;float:right;}
+  .card-title{font-weight:600;margin-top:3px;font-family:'Noto Serif Devanagari',Georgia,serif;}
+  .card-snip{font-size:13px;color:var(--inksoft);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .card-body{padding:0 14px 14px;}
+  .card-text{font-size:13px;line-height:22px;white-space:pre-wrap;margin:0 0 10px;}
+  .att-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .att-tag{display:flex;align-items:center;gap:5px;padding:5px 8px;border-radius:6px;background:var(--paper);border:1px solid var(--border);font-size:12px;cursor:pointer;max-width:130px;}
+  .att-tag span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .card-actions{display:flex;gap:14px;font-size:12px;padding-top:8px;border-top:1px solid var(--border);}
+  .card-actions button{background:none;border:none;cursor:pointer;font-size:12px;padding:0;}
+  .filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;}
+  .filter-chip{flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--card);color:var(--inksoft);cursor:pointer;white-space:nowrap;}
+  .filter-chip.active{background:var(--red);color:var(--paper);border-color:var(--red);}
+  .files-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+  .file-card{padding:10px;border-radius:6px;background:var(--card);border:1px solid var(--border);text-align:left;cursor:pointer;}
+  .file-card .fc-top{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;}
+  .file-card .fc-name{font-size:13px;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .file-card .fc-size{font-size:11px;color:var(--inksoft);margin-top:2px;}
+  .fab{position:fixed;bottom:22px;right:calc(50% - 240px + 22px);width:50px;height:50px;border-radius:50%;background:var(--red);color:var(--paper);border:none;font-size:24px;box-shadow:0 4px 12px rgba(0,0,0,.25);cursor:pointer;}
+  @media (max-width:520px){ .fab{right:22px;} }
+  .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 16px;border-radius:20px;font-size:13px;z-index:80;display:none;}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(20,16,10,.55);z-index:100;align-items:flex-end;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{width:100%;max-width:480px;max-height:88vh;background:var(--paper);border-radius:14px 14px 0 0;display:flex;flex-direction:column;overflow:hidden;}
+  .modal-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);}
+  .modal-head .mh-title{flex:1;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .modal-head button{background:none;border:none;font-size:20px;cursor:pointer;color:var(--inksoft);}
+  .modal-body{flex:1;overflow:auto;padding:16px;}
+  .modal-body img,.modal-body video{width:100%;border-radius:6px;}
+  .modal-body iframe{width:100%;height:60vh;border:1px solid var(--border);border-radius:6px;}
+  .modal-foot{display:flex;align-items:center;gap:8px;padding:12px 16px;border-top:1px solid var(--border);}
+  .modal-foot .spacer{margin-left:auto;display:flex;gap:8px;}
+  table.xtable{border-collapse:collapse;font-size:12px;width:100%;}
+  table.xtable td{border:1px solid var(--border);padding:4px 6px;}
+  table.xtable input{border:none;background:transparent;padding:2px;width:60px;font-size:12px;}
+  .spin{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:sp 0.8s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .loadwrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:60px 0;color:var(--inksoft);font-size:13px;}
+</style>
+</head>
+<body>
+<div id="shell">
+  <header>
+    <div class="h-title">📔 मेरी डायरी</div>
+    <p class="h-date" id="todayLabel"></p>
+    <div class="tabs">
+      <button class="tab active" data-tab="write">✏️ लिखें</button>
+      <button class="tab" data-tab="entries">📖 एंट्रीज़</button>
+      <button class="tab" data-tab="files">🗂️ फाइलें</button>
+    </div>
+  </header>
+  <div id="bannerZone"></div>
+  <main id="main"></main>
+  <button class="fab" id="fab" style="display:none">＋</button>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="mh-title" id="modalTitle"></span>
+      <button id="modalClose">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot" style="display:none"></div>
+  </div>
+</div>
+<input type="file" id="fileInput" multiple style="display:none" />
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- helpers ---------- */
+function todayStr(){ const d=new Date(); const tz=d.getTimezoneOffset()*60000; return new Date(d-tz).toISOString().slice(0,10); }
+function fmtDateHuman(s){ try{ const d=new Date(s+'T00:00:00'); return d.toLocaleDateString('hi-IN',{day:'numeric',month:'long',year:'numeric'});}catch(e){return s;} }
+function fmtSize(b){ if(b==null) return ''; if(b<1024) return b+' B'; if(b<1024*1024) return (b/1024).toFixed(1)+' KB'; return (b/1024/1024).toFixed(1)+' MB'; }
+function uid(p){ return p+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); }
+function esc(s){ return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function categorize(name, mime){
+  const ext=(name.split('.').pop()||'').toLowerCase();
+  if((mime||'').startsWith('image/')||['png','jpg','jpeg','gif','webp','svg','bmp'].includes(ext)) return 'image';
+  if((mime||'').startsWith('video/')||['mp4','mov','webm','avi','mkv'].includes(ext)) return 'video';
+  if((mime||'').startsWith('audio/')||['mp3','wav','ogg','m4a','aac'].includes(ext)) return 'audio';
+  if(ext==='pdf') return 'pdf';
+  if(['doc','docx'].includes(ext)) return 'docx';
+  if(['xls','xlsx','csv'].includes(ext)) return 'xlsx';
+  if(['txt','md'].includes(ext)||mime==='text/plain') return 'text';
+  return 'other';
+}
+const CAT = {
+  image:{label:'इमेज',emoji:'🖼️',color:'var(--green)'},
+  video:{label:'वीडियो',emoji:'🎬',color:'var(--gold)'},
+  audio:{label:'ऑडियो',emoji:'🎵',color:'var(--red)'},
+  pdf:{label:'PDF',emoji:'📕',color:'var(--red)'},
+  docx:{label:'वर्ड',emoji:'📘',color:'#3E5C87'},
+  xlsx:{label:'एक्सल',emoji:'📊',color:'var(--green)'},
+  text:{label:'टेक्स्ट',emoji:'📄',color:'var(--inksoft)'},
+  other:{label:'फाइल',emoji:'📎',color:'var(--inksoft)'},
+};
+
+/* ---------- IndexedDB ---------- */
+let dbp = null;
+function openDB(){
+  if(dbp) return dbp;
+  dbp = new Promise((res,rej)=>{
+    const req = indexedDB.open('meri-diary-db', 1);
+    req.onupgradeneeded = e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('entries')) db.createObjectStore('entries',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('attMeta')) db.createObjectStore('attMeta',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('attBlob')) db.createObjectStore('attBlob',{keyPath:'id'});
+    };
+    req.onsuccess = ()=>res(req.result);
+    req.onerror = ()=>rej(req.error);
+  });
+  return dbp;
+}
+async function idbAll(store){
+  const db=await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store,'readonly'); const st=tx.objectStore(store);
+    const req=st.getAll(); req.onsuccess=()=>res(req.result||[]); req.onerror=()=>rej(req.error);
+  });
+}
+async function idbGet(store,id){
+  const db=await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store,'readonly'); const st=tx.objectStore(store);
+    const req=st.get(id); req.onsuccess=()=>res(req.result||null); req.onerror=()=>rej(req.error);
+  });
+}
+async function idbPut(store,obj){
+  const db=await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store,'readwrite'); tx.objectStore(store).put(obj);
+    tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error);
+  });
+}
+async function idbDelete(store,id){
+  const db=await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store,'readwrite'); tx.objectStore(store).delete(id);
+    tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error);
+  });
+}
+
+/* ---------- state ---------- */
+const S = {
+  tab:'write', entries:[], attMeta:[], loading:true,
+  draftDate: todayStr(), draftTitle:'', draftText:'', draftFiles:[], editingEntryId:null,
+  expandedEntryId:null, filterCat:'all', error:null,
+};
+
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block';
+  clearTimeout(showToast._t); showToast._t=setTimeout(()=>t.style.display='none',2200);
+}
+function showError(msg){ S.error=msg; renderBanner(); }
+function renderBanner(){
+  const z=document.getElementById('bannerZone');
+  z.innerHTML = S.error ? `<div style="padding:0 18px;"><div class="banner banner-err"><span style="flex:1">${esc(S.error)}</span><button class="chip-x" onclick="App.dismissError()">×</button></div></div>` : '';
+}
+
+document.getElementById('todayLabel').textContent = fmtDateHuman(todayStr());
+
+/* ---------- load ---------- */
+async function loadAll(){
+  S.loading=true; render();
+  try{ S.entries = await idbAll('entries'); }catch(e){ S.entries=[]; }
+  try{ S.attMeta = await idbAll('attMeta'); }catch(e){ S.attMeta=[]; }
+  S.loading=false; render();
+}
+
+/* ---------- entry actions ---------- */
+async function saveEntry(){
+  if(!S.draftText.trim() && !S.draftTitle.trim() && S.draftFiles.length===0){ showError('कुछ तो लिखें या फाइल जोड़ें।'); return; }
+  const btn=document.getElementById('saveBtn'); if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin"></span> सेव हो रहा है...'; }
+  try{
+    const attachmentIds=[];
+    for(const df of S.draftFiles){
+      const id=uid('att');
+      await idbPut('attBlob',{id, blob: df.file});
+      await idbPut('attMeta',{id, name:df.file.name, mime:df.file.type||'', size:df.file.size, category:df.category, createdAt:new Date().toISOString()});
+      attachmentIds.push(id);
+    }
+    S.attMeta = await idbAll('attMeta');
+
+    let landingId;
+    if(S.editingEntryId){
+      const entry = S.entries.find(e=>e.id===S.editingEntryId);
+      entry.date=S.draftDate; entry.title=S.draftTitle; entry.text=S.draftText;
+      entry.attachmentIds=[...entry.attachmentIds, ...attachmentIds]; entry.updatedAt=new Date().toISOString();
+      await idbPut('entries', entry);
+      landingId = entry.id;
+    } else {
+      const entry={id:uid('e'), date:S.draftDate, title:S.draftTitle, text:S.draftText, attachmentIds, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()};
+      await idbPut('entries', entry);
+      S.entries.unshift(entry);
+      landingId = entry.id;
+    }
+    S.entries = await idbAll('entries');
+    const wasEdit = !!S.editingEntryId;
+    S.draftTitle=''; S.draftText=''; S.draftFiles=[]; S.draftDate=todayStr(); S.editingEntryId=null;
+    showToast(wasEdit?'एंट्री अपडेट हो गई':'एंट्री सेव हो गई');
+    S.tab='entries'; S.expandedEntryId=landingId;
+    render();
+  }catch(e){
+    showError('सेव करने में दिक्कत आई, दोबारा कोशिश करें।');
+    if(btn){ btn.disabled=false; }
+    render();
+  }
+}
+function startEditEntry(id){
+  const entry=S.entries.find(e=>e.id===id); if(!entry) return;
+  S.editingEntryId=id; S.draftDate=entry.date; S.draftTitle=entry.title; S.draftText=entry.text; S.draftFiles=[];
+  S.tab='write'; render();
+}
+function cancelEdit(){ S.editingEntryId=null; S.draftTitle=''; S.draftText=''; S.draftFiles=[]; S.draftDate=todayStr(); render(); }
+async function deleteEntry(id){
+  const entry=S.entries.find(e=>e.id===id); if(!entry) return;
+  S.entries=S.entries.filter(e=>e.id!==id);
+  await idbDelete('entries', id);
+  const stillUsed=new Set(S.entries.flatMap(e=>e.attachmentIds));
+  for(const aid of entry.attachmentIds){
+    if(!stillUsed.has(aid)){ await idbDelete('attMeta',aid); await idbDelete('attBlob',aid); }
+  }
+  S.attMeta = await idbAll('attMeta');
+  showToast('एंट्री हटा दी गई');
+  render();
+}
+
+/* ---------- file picking ---------- */
+document.getElementById('fileInput').addEventListener('change', e=>{
+  const files=Array.from(e.target.files||[]);
+  files.forEach(f=> S.draftFiles.push({tempId:uid('tmp'), file:f, category:categorize(f.name,f.type)}));
+  e.target.value='';
+  render();
+});
+function removeDraftFile(tempId){ S.draftFiles=S.draftFiles.filter(f=>f.tempId!==tempId); render(); }
+
+/* ---------- viewer ---------- */
+let currentObjectUrls=[];
+function revokeUrls(){ currentObjectUrls.forEach(u=>URL.revokeObjectURL(u)); currentObjectUrls=[]; }
+
+async function openViewer(attId){
+  const meta = S.attMeta.find(a=>a.id===attId); if(!meta) return;
+  const overlay=document.getElementById('modalOverlay'), body=document.getElementById('modalBody'), foot=document.getElementById('modalFoot');
+  document.getElementById('modalTitle').textContent = meta.name;
+  overlay.classList.add('open');
+  body.innerHTML = '<div class="loadwrap"><div class="spin"></div><span>लोड हो रहा है...</span></div>';
+  foot.style.display='none';
+  revokeUrls();
+
+  const rec = await idbGet('attBlob', attId);
+  if(!rec){ body.innerHTML='<p style="text-align:center;color:var(--inksoft);font-size:13px;">फाइल नहीं मिली।</p>'; return; }
+  const blob = rec.blob;
+  const url = URL.createObjectURL(blob); currentObjectUrls.push(url);
+
+  const footHTML = (extra)=>`
+    ${extra||''}
+    <div class="spacer">
+      <button class="btn btn-outline" onclick="App.shareAtt('${attId}')">🔗 शेयर</button>
+      <button class="btn btn-primary" style="margin:0;width:auto" onclick="App.downloadAtt('${attId}')">⬇️ डाउनलोड</button>
+    </div>`;
+
+  if(meta.category==='image'){
+    body.innerHTML = `<img src="${url}" alt="${esc(meta.name)}"/>`;
+    foot.innerHTML = footHTML(); foot.style.display='flex';
+  } else if(meta.category==='video'){
+    body.innerHTML = `<video src="${url}" controls></video>`;
+    foot.innerHTML = footHTML(); foot.style.display='flex';
+  } else if(meta.category==='audio'){
+    body.innerHTML = `<audio src="${url}" controls style="width:100%"></audio>`;
+    foot.innerHTML = footHTML(); foot.style.display='flex';
+  } else if(meta.category==='pdf'){
+    body.innerHTML = `<iframe src="${url}"></iframe>`;
+    foot.innerHTML = footHTML(); foot.style.display='flex';
+  } else if(meta.category==='docx'){
+    try{
+      const buf = await blob.arrayBuffer();
+      const result = await mammoth.convertToHtml({arrayBuffer:buf});
+      body.innerHTML = `<div class="banner banner-info" style="margin-bottom:10px">सिर्फ देखने के लिए — एडिट करने हेतु डाउनलोड कर Word में खोलें, फिर दोबारा अपलोड करें।</div><div style="font-size:13px;line-height:22px">${result.value}</div>`;
+    }catch(e){ body.innerHTML='<p style="color:var(--red);font-size:13px">फाइल प्रीव्यू नहीं हो पाई।</p>'; }
+    foot.innerHTML = footHTML(); foot.style.display='flex';
+  } else if(meta.category==='xlsx'){
+    try{
+      const buf = await blob.arrayBuffer();
+      const wb = XLSX.read(buf,{type:'array'});
+      const sheetName = wb.SheetNames[0];
+      const grid = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header:1, defval:''});
+      renderXlsxViewer(attId, sheetName, grid, false);
+    }catch(e){ body.innerHTML='<p style="color:var(--red);font-size:13px">एक्सल फाइल नहीं खुली।</p>'; }
+  } else if(meta.category==='text'){
+    try{
+      const txt = await blob.text();
+      renderTextViewer(attId, txt, false);
+    }catch(e){ body.innerHTML='<p style="color:var(--red);font-size:13px">टेक्स्ट फाइल नहीं खुली।</p>'; }
+  } else {
+    body.innerHTML = '<p style="text-align:center;color:var(--inksoft);font-size:13px">यह फाइल टाइप सीधे प्रीव्यू नहीं हो सकती — डाउनलोड करें।</p>';
+    foot.innerHTML = footHTML(); foot.style.display='flex';
+  }
+}
+
+function renderXlsxViewer(attId, sheetName, grid, editMode){
+  const body=document.getElementById('modalBody'), foot=document.getElementById('modalFoot');
+  let html = '<div style="overflow:auto;border:1px solid var(--border);border-radius:6px"><table class="xtable"><tbody>';
+  grid.forEach((row,r)=>{
+    html += '<tr>';
+    (row.length?row:['']).forEach((cell,c)=>{
+      if(editMode) html += `<td><input value="${esc(String(cell))}" data-r="${r}" data-c="${c}" class="xcell"/></td>`;
+      else html += `<td>${esc(String(cell))}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  body.innerHTML = html;
+
+  let footHtml;
+  if(editMode){
+    footHtml = `<button class="btn btn-green" onclick="App.saveXlsxEdit('${attId}','${esc(sheetName)}')">💾 सेव</button>
+      <button class="btn" style="background:none;color:var(--inksoft)" onclick="App.reopenViewer('${attId}')">रद्द करें</button>
+      <div class="spacer">
+        <button class="btn btn-outline" onclick="App.shareAtt('${attId}')">🔗 शेयर</button>
+        <button class="btn btn-primary" style="margin:0;width:auto" onclick="App.downloadAtt('${attId}')">⬇️ डाउनलोड</button>
+      </div>`;
+  } else {
+    footHtml = `<button class="btn btn-outline" onclick="App.editXlsx('${attId}','${esc(sheetName)}')">✏️ एडिट</button>
+      <div class="spacer">
+        <button class="btn btn-outline" onclick="App.shareAtt('${attId}')">🔗 शेयर</button>
+        <button class="btn btn-primary" style="margin:0;width:auto" onclick="App.downloadAtt('${attId}')">⬇️ डाउनलोड</button>
+      </div>`;
+  }
+  foot.innerHTML = footHtml; foot.style.display='flex';
+  window._xlsxGrid = grid.map(row=>[...row]);
+  if(editMode){
+    body.querySelectorAll('.xcell').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const r=+e.target.dataset.r, c=+e.target.dataset.c;
+        while(window._xlsxGrid.length<=r) window._xlsxGrid.push([]);
+        while(window._xlsxGrid[r].length<=c) window._xlsxGrid[r].push('');
+        window._xlsxGrid[r][c]=e.target.value;
+      });
+    });
+  }
+}
+async function editXlsx(attId, sheetName){
+  renderXlsxViewer(attId, sheetName, window._xlsxGrid, true);
+}
+async function saveXlsxEdit(attId, sheetName){
+  try{
+    const ws = XLSX.utils.aoa_to_sheet(window._xlsxGrid);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName||'Sheet1');
+    const out = XLSX.write(wb,{type:'array',bookType:'xlsx'});
+    const blob = new Blob([out], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    await idbPut('attBlob', {id:attId, blob});
+    const meta = S.attMeta.find(a=>a.id===attId);
+    meta.size = blob.size; meta.updatedAt=new Date().toISOString();
+    await idbPut('attMeta', meta);
+    showToast('एक्सल फाइल सेव हो गई');
+    renderXlsxViewer(attId, sheetName, window._xlsxGrid, false);
+  }catch(e){ showError('एक्सल सेव करने में दिक्कत आई।'); }
+}
+
+function renderTextViewer(attId, text, editMode){
+  const body=document.getElementById('modalBody'), foot=document.getElementById('modalFoot');
+  if(editMode){
+    body.innerHTML = `<textarea id="textEditArea" rows="14">${esc(text)}</textarea>`;
+    foot.innerHTML = `<button class="btn btn-green" onclick="App.saveTextEdit('${attId}')">💾 सेव</button>
+      <button class="btn" style="background:none;color:var(--inksoft)" onclick="App.reopenViewer('${attId}')">रद्द करें</button>
+      <div class="spacer">
+        <button class="btn btn-outline" onclick="App.shareAtt('${attId}')">🔗 शेयर</button>
+        <button class="btn btn-primary" style="margin:0;width:auto" onclick="App.downloadAtt('${attId}')">⬇️ डाउनलोड</button>
+      </div>`;
+  } else {
+    body.innerHTML = `<pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;margin:0">${esc(text)}</pre>`;
+    foot.innerHTML = `<button class="btn btn-outline" onclick="App.editText('${attId}')">✏️ एडिट</button>
+      <div class="spacer">
+        <button class="btn btn-outline" onclick="App.shareAtt('${attId}')">🔗 शेयर</button>
+        <button class="btn btn-primary" style="margin:0;width:auto" onclick="App.downloadAtt('${attId}')">⬇️ डाउनलोड</button>
+      </div>`;
+  }
+  foot.style.display='flex';
+  window._textVal = text;
+}
+async function editText(attId){
+  renderTextViewer(attId, window._textVal, true);
+  document.getElementById('textEditArea').addEventListener('input', e=>{ window._textVal=e.target.value; });
+}
+async function saveTextEdit(attId){
+  try{
+    const val = document.getElementById('textEditArea').value;
+    const blob = new Blob([val], {type:'text/plain'});
+    await idbPut('attBlob', {id:attId, blob});
+    const meta = S.attMeta.find(a=>a.id===attId);
+    meta.size = blob.size; meta.updatedAt=new Date().toISOString();
+    await idbPut('attMeta', meta);
+    showToast('टेक्स्ट फाइल सेव हो गई');
+    renderTextViewer(attId, val, false);
+  }catch(e){ showError('टेक्स्ट सेव करने में दिक्कत आई।'); }
+}
+function reopenViewer(attId){ openViewer(attId); }
+
+async function downloadAtt(attId){
+  const meta = S.attMeta.find(a=>a.id===attId);
+  const rec = await idbGet('attBlob', attId); if(!rec) return;
+  const url = URL.createObjectURL(rec.blob);
+  const a=document.createElement('a'); a.href=url; a.download=meta.name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+async function shareAtt(attId){
+  const meta = S.attMeta.find(a=>a.id===attId);
+  const rec = await idbGet('attBlob', attId); if(!rec) return;
+  try{
+    const file = new File([rec.blob], meta.name, {type: meta.mime || rec.blob.type});
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title: meta.name});
+    } else {
+      downloadAtt(attId);
+      showToast('शेयर सपोर्ट नहीं मिला — फाइल डाउनलोड कर दी गई');
+    }
+  }catch(e){ /* user cancelled share, ignore */ }
+}
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); revokeUrls(); }
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalOverlay').addEventListener('click', e=>{ if(e.target.id==='modalOverlay') closeModal(); });
+
+/* ---------- render ---------- */
+function render(){
+  renderBanner();
+  document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', t.dataset.tab===S.tab));
+  const main=document.getElementById('main');
+  const fab=document.getElementById('fab');
+  fab.style.display = S.tab==='write' ? 'none' : 'block';
+
+  if(S.loading){ main.innerHTML='<div class="loadwrap"><div class="spin"></div><span>लोड हो रहा है...</span></div>'; return; }
+
+  if(S.tab==='write') main.innerHTML = renderWrite();
+  else if(S.tab==='entries') main.innerHTML = renderEntries();
+  else main.innerHTML = renderFiles();
+
+  attachWriteHandlers();
+  attachEntriesHandlers();
+  attachFilesHandlers();
+}
+
+function renderWrite(){
+  let html = '';
+  if(S.editingEntryId) html += `<div class="banner banner-info"><span style="flex:1">पुरानी एंट्री एडिट हो रही है</span><button onclick="App.cancelEdit()" style="background:none;border:none;color:var(--gold);text-decoration:underline;cursor:pointer;font-size:13px">रद्द करें</button></div>`;
+  html += `<input type="date" id="draftDate" value="${S.draftDate}" style="margin-top:${S.editingEntryId?'10px':'0'}"/>`;
+  html += `<input type="text" id="draftTitle" class="title-input" placeholder="शीर्षक (वैकल्पिक)" value="${esc(S.draftTitle)}"/>`;
+  html += `<textarea id="draftText" rows="9" placeholder="आज क्या हुआ लिखिए..." style="margin-top:8px">${esc(S.draftText)}</textarea>`;
+  html += `<div class="attach-btn"><button class="btn btn-ghost" id="attachBtn">📎 फाइल जोड़ें (PDF, वर्ड, एक्सल, इमेज, वीडियो, ऑडियो)</button></div>`;
+  if(S.draftFiles.length){
+    html += S.draftFiles.map(df=>{
+      const c=CAT[df.category];
+      const big = df.file.size > 50*1024*1024;
+      return `<div class="file-chip"><span>${c.emoji}</span><span class="name">${esc(df.file.name)}</span><span class="size">${fmtSize(df.file.size)}</span>${big?'<span class="warn" title="बड़ी फाइल, डिवाइस स्टोरेज देखें">⚠</span>':''}<button class="chip-x" data-remove="${df.tempId}">×</button></div>`;
+    }).join('');
+  }
+  html += `<button class="btn btn-primary" id="saveBtn">💾 ${S.editingEntryId?'बदलाव सेव करें':'डायरी में सेव करें'}</button>`;
+  return html;
+}
+function attachWriteHandlers(){
+  if(S.tab!=='write') return;
+  const dd=document.getElementById('draftDate'); if(dd) dd.addEventListener('input', e=>S.draftDate=e.target.value);
+  const dt=document.getElementById('draftTitle'); if(dt) dt.addEventListener('input', e=>S.draftTitle=e.target.value);
+  const dtx=document.getElementById('draftText'); if(dtx) dtx.addEventListener('input', e=>S.draftText=e.target.value);
+  const ab=document.getElementById('attachBtn'); if(ab) ab.addEventListener('click', ()=>document.getElementById('fileInput').click());
+  document.querySelectorAll('[data-remove]').forEach(b=> b.addEventListener('click', ()=>removeDraftFile(b.dataset.remove)));
+  const sb=document.getElementById('saveBtn'); if(sb) sb.addEventListener('click', saveEntry);
+}
+
+function renderEntries(){
+  const sorted = [...S.entries].sort((a,b)=> (b.date+b.createdAt).localeCompare(a.date+a.createdAt));
+  if(!sorted.length) return `<div class="empty"><div style="font-size:26px">📖</div><p>अभी कोई एंट्री नहीं है। लिखना शुरू करें।</p><button class="btn btn-primary" style="width:auto" id="goWrite">नई एंट्री लिखें</button></div>`;
+  return sorted.map(entry=>{
+    const expanded = S.expandedEntryId===entry.id;
+    let inner = `<div class="card-head" data-toggle="${entry.id}">
+      <span class="card-date">${fmtDateHuman(entry.date)}</span>
+      ${entry.attachmentIds.length?`<span class="card-attn">📎 ${entry.attachmentIds.length}</span>`:''}
+      ${entry.title?`<div class="card-title">${esc(entry.title)}</div>`:''}
+      ${!expanded && entry.text ? `<div class="card-snip">${esc(entry.text)}</div>`:''}
+    </div>`;
+    if(expanded){
+      let atts = '';
+      if(entry.attachmentIds.length){
+        atts = '<div class="att-row">' + entry.attachmentIds.map(id=>{
+          const m=S.attMeta.find(a=>a.id===id); if(!m) return '';
+          const c=CAT[m.category];
+          return `<button class="att-tag" data-open="${id}"><span>${c.emoji}</span><span>${esc(m.name)}</span></button>`;
+        }).join('') + '</div>';
+      }
+      inner += `<div class="card-body">
+        ${entry.text?`<p class="card-text">${esc(entry.text)}</p>`:''}
+        ${atts}
+        <div class="card-actions">
+          <button style="color:var(--gold)" data-edit="${entry.id}">✏️ एडिट</button>
+          <button style="color:var(--red)" data-del="${entry.id}">🗑️ डिलीट</button>
+        </div>
+      </div>`;
+    }
+    return `<div class="card">${inner}</div>`;
+  }).join('');
+}
+function attachEntriesHandlers(){
+  if(S.tab!=='entries') return;
+  const gw=document.getElementById('goWrite'); if(gw) gw.addEventListener('click', ()=>{S.tab='write'; render();});
+  document.querySelectorAll('[data-toggle]').forEach(el=> el.addEventListener('click', ()=>{
+    const id=el.dataset.toggle; S.expandedEntryId = S.expandedEntryId===id? null : id; render();
+  }));
+  document.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', e=>{ e.stopPropagation(); openViewer(el.dataset.open); }));
+  document.querySelectorAll('[data-edit]').forEach(el=> el.addEventListener('click', e=>{ e.stopPropagation(); startEditEntry(el.dataset.edit); }));
+  document.querySelectorAll('[data-del]').forEach(el=> el.addEventListener('click', e=>{ e.stopPropagation(); deleteEntry(el.dataset.del); }));
+}
+
+function renderFiles(){
+  const cats=['all','image','video','audio','pdf','docx','xlsx','text'];
+  let html = '<div class="filters">' + cats.map(c=>`<button class="filter-chip ${S.filterCat===c?'active':''}" data-filter="${c}">${c==='all'?'सभी':CAT[c].label}</button>`).join('') + '</div>';
+  const list = S.filterCat==='all' ? S.attMeta : S.attMeta.filter(a=>a.category===S.filterCat);
+  if(!list.length){ html += `<div class="empty"><div style="font-size:26px">🗂️</div><p>इस तरह की कोई फाइल नहीं मिली।</p></div>`; return html; }
+  html += '<div class="files-grid">' + list.slice().reverse().map(m=>{
+    const c=CAT[m.category];
+    return `<button class="file-card" data-open="${m.id}">
+      <div class="fc-top" style="color:${c.color}"><span>${c.emoji}</span><span>${c.label}</span></div>
+      <div class="fc-name">${esc(m.name)}</div>
+      <div class="fc-size">${fmtSize(m.size)}</div>
+    </button>`;
+  }).join('') + '</div>';
+  return html;
+}
+function attachFilesHandlers(){
+  if(S.tab!=='files') return;
+  document.querySelectorAll('[data-filter]').forEach(el=> el.addEventListener('click', ()=>{ S.filterCat=el.dataset.filter; render(); }));
+  document.querySelectorAll('[data-open]').forEach(el=> el.addEventListener('click', ()=> openViewer(el.dataset.open)));
+}
+
+/* ---------- tabs / fab ---------- */
+document.querySelectorAll('.tab').forEach(t=> t.addEventListener('click', ()=>{ S.tab=t.dataset.tab; render(); }));
+document.getElementById('fab').addEventListener('click', ()=>{
+  S.editingEntryId=null; S.draftTitle=''; S.draftText=''; S.draftFiles=[]; S.draftDate=todayStr(); S.tab='write'; render();
+});
+
+/* ---------- expose for inline handlers ---------- */
+window.App = {
+  dismissError(){ S.error=null; renderBanner(); },
+  cancelEdit, editXlsx, saveXlsxEdit, editText, saveTextEdit, reopenViewer,
+  downloadAtt, shareAtt,
+};
+
+loadAll();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+})();
+</script>
+</body>
+</html>
